@@ -32,6 +32,7 @@ import lifemapperTools as LM
 from lifemapperTools.common.lmListModel import BackSpaceEventHandler, EnterTextEventHandler, \
                                                LmListModel
 from LmClient.lmClientLib import LMClient, OutOfDateException
+import idigbioClient.idigbioApi as idb
 
 class Ui_Dialog(object):
    
@@ -166,10 +167,11 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       self.occListModel.updateList([])
       self.occSetCombo.clearEditText()
       if idx != 0 and idx != -1:
-         self.serviceRoot = self.providerCombo.itemData(idx, role=Qt.UserRole)
+         self.serviceRoot, self.serviceType = self.providerCombo.itemData(idx, role=Qt.UserRole)
          self.occSetCombo.setEnabled(True)
       else:
          self.serviceRoot = None
+         self.serviceType = None
          self.occSetCombo.setEnabled(False)
 # .......................................
 
@@ -203,7 +205,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       if self._serviceRoot is None:
          pCurrentIdx = self.providerCombo.currentIndex()
          if pCurrentIdx != 0 and pCurrentIdx != -1:
-            self._serviceRoot = self.providerCombo.itemData(pCurrentIdx, role=Qt.UserRole)
+            self._serviceRoot, self.serviceType = self.providerCombo.itemData(pCurrentIdx, role=Qt.UserRole)
       
       return self._serviceRoot
    
@@ -223,9 +225,13 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          else:
             tocName = '%s_%s' % (provider, hit.name)
             if self.tmpDir is not None:
-               tmpDir = os.path.join(self.tmpDir,"%s.shp" % (tocName))
                try:
-                  self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpDir,overwrite=True)
+                  if self.serviceType == "snapshot":
+                     tmpDir = os.path.join(self.tmpDir,"%s.shp" % (tocName))
+                     self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpDir,overwrite=True)
+                  elif self.serviceType == "live":
+                     tmpDir = os.path.join(self.tmpDir,"%s.csv" % (tocName))
+                     idb.getSpecimens(hit.name, tmpDir)
                except Exception, e:
                   pass
                else:
@@ -247,14 +253,25 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
 # ........................................
 
    def addToCanvas(self, vectorpath, shapename):
-     
-      vectorLayer = QgsVectorLayer(vectorpath,shapename,'ogr')
+      fileName, fileExtension = os.path.splitext(vectorpath)
+      vectortype = "ogr"
+      if fileExtension == ".csv":
+         csvVectorpath = "file:///" + vectorpath
+         csvVectorpath += "?delimiter=,&xField=lon&yField=lat&crs=epsg:4723"
+         vectorpath = vectorpath.replace('.csv', '.shp')
+         vectorLayer = QgsVectorLayer(csvVectorpath,shapename,"delimitedtext")
+         warningname = shapename    
+         if not vectorLayer.isValid():
+            QMessageBox.warning(self,"status: ",
+               "%s not valid" % (warningname))
+         else:
+            vectorwriter = QgsVectorFileWriter.writeAsVectorFormat(vectorLayer,vectorpath,"utf-8",None,"ESRI Shapefile")
+      vectorLayer = QgsVectorLayer(vectorpath,shapename,vectortype)
       warningname = shapename    
       if not vectorLayer.isValid():
          QMessageBox.warning(self,"status: ",
            "%s not valid" % (warningname))           
       else:
-         
          QgsMapLayerRegistry.instance().addMapLayer(vectorLayer)
          #self.iface.zoomFull()
                            
@@ -302,7 +319,10 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          
          for idx,instance in enumerate(instanceObjs):
             
-            self.providerCombo.addItem(instance[0], instance[1])
+            self.providerCombo.addItem(instance[0], [instance[1], "snapshot"])
+
+      for idx,instance in enumerate(idb.getLiveInstances()):
+         self.providerCombo.addItem(instance[0], [instance[1], "live"])
 # .......................................
    def setPreviewDownloadText(self, displayName):
       
@@ -358,7 +378,10 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       
       root = self.serviceRoot
       try:
-         self.namedTuples = self.client.sdm.hint(searchText,maxReturned=60,serviceRoot=root)         
+         if self.serviceType == "snapshot":
+            self.namedTuples = self.client.sdm.hint(searchText,maxReturned=60,serviceRoot=root)
+         elif self.serviceType == "live":
+            self.namedTuples = idb.getSpeciesHint(searchText, maxReturned=100)         
       except Exception, e:
          pass
       else:
