@@ -38,7 +38,6 @@ from LmCommon.common.localconstants import ARCHIVE_USER
 import pdb
 
 
-DEFAULT_PWD = 'anon'
 
 # .............................................................................
 
@@ -83,9 +82,9 @@ class _Controller:
       self.buttonOk = okayButton
       self.clientmethod = requestfunc
       self.outputfunction = None
+      
       if client is None:
-         client = LMClient(userId=ARCHIVE_USER,pwd=DEFAULT_PWD)
-
+         client = LMClient()         
       if initializeWithData:
          # the model, because of thread and signals, has to live in the 
          # thread and the client lives in the model, so here we 

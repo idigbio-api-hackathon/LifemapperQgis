@@ -151,9 +151,9 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
    def showHideBrowseDock(self):
       
       if self.isVisible():
-         if self.client != None:
-            self.client.logout()    
-            self.client = None       
+         #if self.client != None:
+            #self.client.logout()    
+            #self.client = None       
          self.hide()
       else:
          if self.client == None:
@@ -271,6 +271,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          QMessageBox.warning(self,"Problem...",message,QMessageBox.Ok)
       else:
          self.client = cl
+         #print "COOKIE AT TOGGLE WIDGET ",self.client._cl.cookieJar," ",self.client
          try:
             myVersion = LM.version() # test"Version 0.1.2" #
             myVersion = myVersion.strip("Version")

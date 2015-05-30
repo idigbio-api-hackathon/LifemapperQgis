@@ -141,8 +141,9 @@ class SignInDialog(QDialog, Ui_Dialog):
       valid = self.validate()
       if valid:
          try:
-            cl = LMClient(userId=self.keyvalues["usernameEdit"], 
-                          pwd=self.keyvalues["passEdit"])
+            cl = LMClient()
+            cl.login(userId=self.keyvalues["usernameEdit"], 
+                     pwd=self.keyvalues["passEdit"])
          except OutOfDateException, e:
             message = "Your plugin version is out of date, please update from the QGIS python plugin repository."
             QMessageBox.warning(self,"Problem...",message,QMessageBox.Ok)
@@ -162,7 +163,6 @@ class SignInDialog(QDialog, Ui_Dialog):
                                                 message,
                                                 QMessageBox.Ok)        
          else:
-            
             username = str(self.usernameEdit.text())
             self.client = cl
             try:

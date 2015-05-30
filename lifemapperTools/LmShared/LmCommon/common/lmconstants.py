@@ -23,7 +23,6 @@
           Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 
           02110-1301, USA.
 """
-from osgeo.ogr import OFTInteger, OFTReal, OFTString
 
 # .............................................................................
 # .                               File constants                              .
@@ -164,7 +163,7 @@ class JobStatus:
    # ==========================================================================   
    # =                            Lifemapper Errors                           =
    # ==========================================================================
-   LM_GENERAL_ERROR = 2000
+   #LM_GENERAL_ERROR = 2000 - conflicts with MODEL_ERROR and is not used.
    
    # Python errors
    # ............................................
@@ -266,10 +265,15 @@ class JobStatus:
    ME_MISMATCHED_LAYER_DIMENSIONS = 3601
    ME_CORRUPTED_LAYER = 3602 # Could be issue with header or data
    ME_LAYER_MISSING = 3603
+   ME_FILE_LOCK_ERROR = 3604
    
    # Maxent points issues
    # ............................................
    ME_POINTS_ERROR = 3740
+   
+   # Other Maxent problems
+   # ............................................
+   ME_HEAP_SPACE_ERROR = 3801
    
    # ==========================================================================   
    # =                               HTTP Errors                              =
@@ -500,6 +504,26 @@ class ProcessType:
    # .......... Notify ..........
    SMTP = 510
    
+   @staticmethod
+   def isSDM(ptype):
+      if ptype in (ProcessType.SMTP, ProcessType.ATT_MODEL, 
+                   ProcessType.ATT_PROJECT, ProcessType.OM_MODEL, 
+                   ProcessType.OM_PROJECT, ProcessType.GBIF_TAXA_OCCURRENCE, 
+                   ProcessType.BISON_TAXA_OCCURRENCE, 
+                   ProcessType.IDIGBIO_TAXA_OCCURRENCE):
+         return True
+      return False
+      
+   @staticmethod
+   def isRAD(ptype):
+      if ptype in (ProcessType.SMTP, ProcessType.RAD_BUILDSHAPE, 
+                   ProcessType.RAD_INTERSECT, ProcessType.RAD_COMPRESS, 
+                   ProcessType.RAD_SWAP, ProcessType.RAD_SPLOTCH, 
+                   ProcessType.RAD_CALCULATE):
+         return True
+      return False
+   
+   
 
 # .............................................................................
 # .                               RAD constants                               .
@@ -549,282 +573,13 @@ YMD_HH_MM_SS = "%Y-%m-%d %H:%M%S"
 DEFAULT_POST_USER = 'anon'
 
 # .............................................................................
-# .............................................................................
-# .                               Data sources!                            .
-# .............................................................................
-# .............................................................................
-# One of these keys should exactly match DATASOURCE in config.ini.They are used 
-# for the data path, initial data population parameters and pipeline threads
-GBIF_KEY = 'GBIF'
-BISON_KEY = 'BISON'
-IDIGBIO_KEY = 'IDIGBIO'
-CHARLIE_KEY = 'Charlie'
-
-# .............................................................................
-# .                  Provider/Local data fieldname constants                              .
-# .............................................................................
-LM_ID_FIELD = 'lmid'
-LM_WKT_FIELD = 'geomwkt'
-
-class ShortDWCNames:
-   OCCURRENCE_ID = 'occurid'
-   INSTITUTION_CODE = 'inst_code'
-   COLLECTION_CODE = 'coll_code'
-   CATALOG_NUMBER = 'catnum'
-   BASIS_OF_RECORD = 'basisofrec'
-   DECIMAL_LATITUDE = 'dec_lat'
-   DECIMAL_LONGITUDE = 'dec_long'
-   SCIENTIFIC_NAME = 'sciname'
-   DAY = 'day'
-   MONTH = 'month'
-   YEAR = 'year'
-   RECORDED_BY = 'rec_by'
-   
-# ......................................................
-# For parsing GBIF data download, Jan 2015 and beyond
-# Dictionary key is column number; value is (column name, datatype)
-# occColnames = ['gbifId', 'occurrenceID_dwc', 'taxonKey', 'datasetKey', 
-#                'publishingOrgKey', 'basisOfRecord', 'kingdomKey', 'phylumKey', 
-#                'classKey', 'orderKey', 'familyKey', 'genusKey', 'speciesKey', 
-#                'scientificName', 'decimalLatitude', 'decimalLongitude', 'day', 
-#                'month', 'year', 'recordedBy']
-
-# ......................................................
-GBIF_TAXONKEY_FIELD = 'specieskey'
-GBIF_TAXONNAME_FIELD = ShortDWCNames.SCIENTIFIC_NAME
-GBIF_PROVIDER_FIELD = 'puborgkey'
-GBIF_ID_FIELD = 'gbifid'
-
-GBIF_TAXON_FIELDS = {0: ('taxonkey', OFTString), 
-                     1: ('kingdom', OFTString),
-                     2: ('phylum', OFTString),
-                     3: ('class', OFTString), 
-                     4: ('order', OFTString),
-                     5: ('family', OFTString),
-                     6: ('genus', OFTString),
-                     7: (ShortDWCNames.SCIENTIFIC_NAME, OFTString),
-                     8: ('genuskey', OFTInteger),
-                     9: (GBIF_TAXONKEY_FIELD, OFTInteger),
-                     10:('count', OFTInteger)
-                     }
-
-GBIF_EXPORT_FIELDS = {0: (GBIF_ID_FIELD, OFTInteger), 
-                      1: (ShortDWCNames.OCCURRENCE_ID, OFTInteger), 
-                      2: ('taxonkey', OFTInteger),
-                      3: ('datasetkey', OFTString),
-                      4: (GBIF_PROVIDER_FIELD, OFTString),
-                      5: (ShortDWCNames.BASIS_OF_RECORD, OFTString),
-                      6: ('kingdomkey', OFTInteger),
-                      7: ('phylumkey', OFTInteger),
-                      8: ('classkey', OFTInteger),
-                      9: ('orderkey', OFTInteger),
-                      10: ('familykey', OFTInteger), 
-                      11: ('genuskey', OFTInteger),
-                      12: (GBIF_TAXONKEY_FIELD, OFTInteger),
-                      13: (ShortDWCNames.SCIENTIFIC_NAME, OFTString),
-                      14: (ShortDWCNames.DECIMAL_LATITUDE, OFTReal),
-                      15: (ShortDWCNames.DECIMAL_LONGITUDE, OFTReal),
-                      16: (ShortDWCNames.DAY, OFTInteger),
-                      17: (ShortDWCNames.MONTH, OFTInteger),
-                      18: (ShortDWCNames.YEAR, OFTInteger),
-                      19: (ShortDWCNames.RECORDED_BY, OFTString),
-                      20: (ShortDWCNames.INSTITUTION_CODE, OFTString),
-                      21: (ShortDWCNames.COLLECTION_CODE, OFTString),
-                      22: (ShortDWCNames.CATALOG_NUMBER, OFTString),
-                    }
-
-# .............................................................................
-# .                               GBIF constants                              .
-# .............................................................................
-# seconds to wait before retrying unresponsive services
-GBIF_WAIT_TIME = 3 * ONE_MIN
-GBIF_LIMIT = 300
-GBIF_REST_URL = 'http://api.gbif.org/v1'
-GBIF_SPECIES_SERVICE = 'species'
-GBIF_OCCURRENCE_SERVICE = 'occurrence'
-GBIF_DATASET_SERVICE = 'dataset'
-GBIF_ORGANIZATION_SERVICE = 'organization'
-
-GBIF_REQUEST_SIMPLE_QUERY_KEY = 'q'
-GBIF_REQUEST_NAME_QUERY_KEY = 'name'
-GBIF_REQUEST_TAXON_KEY = 'TAXON_KEY'
-GBIF_REQUEST_RANK_KEY = 'rank'
-GBIF_REQUEST_DATASET_KEY = 'dataset_key'                
-
-GBIF_DATASET_BACKBONE_VALUE = 'GBIF Backbone Taxonomy'
-
-GBIF_SEARCH_COMMAND = 'search'
-GBIF_COUNT_COMMAND = 'count'
-GBIF_MATCH_COMMAND = 'match'
-GBIF_DOWNLOAD_COMMAND = 'download'
-GBIF_DOWNLOAD_REQUEST_COMMAND = 'request'
-
-GBIF_QUERY_PARAMS = {GBIF_SPECIES_SERVICE: {'status': 'ACCEPTED',
-                                            GBIF_REQUEST_RANK_KEY: None,
-                                            GBIF_REQUEST_DATASET_KEY: None,
-                                            GBIF_REQUEST_NAME_QUERY_KEY: None},
-                     GBIF_OCCURRENCE_SERVICE: {"GEOREFERENCED": True,
-                                               "SPATIAL_ISSUES": False,
-#                                                "BASIS_OF_RECORD": ["PRESERVED_SPECIMEN"],
-                                               GBIF_REQUEST_TAXON_KEY: None},
-                     GBIF_DOWNLOAD_COMMAND: {"creator": "aimee",
-                                             "notification_address": ["lifemapper@mailinator.com"]}
-                     }
-URL_ESCAPES = [ [" ", "%20"] ]
-
-
-GBIF_RESPONSE_IDENTIFIER_KEY = 'key'
-GBIF_RESPONSE_RESULT_KEY = 'results'
-GBIF_RESPONSE_END_KEY = 'endOfRecords'
-GBIF_RESPONSE_COUNT_KEY = 'count'
-GBIF_RESPONSE_GENUS_ID_KEY = 'genusKey'
-GBIF_RESPONSE_GENUS_KEY = 'genus'
-GBIF_RESPONSE_SPECIES_ID_KEY = 'speciesKey'
-GBIF_RESPONSE_SPECIES_KEY = 'species'
-GBIF_RESPONSE_MATCH_KEY = 'matchType'
-GBIF_RESPONSE_NOMATCH_VALUE = 'NONE'
-
-# For writing files from GBIF DarwinCore download, 
-# DWC translations in lmCompute/code/sdm/gbif/constants
-# We are adding the 2 fields: LM_WKT_FIELD and GBIF_LINK_FIELD
-GBIF_LINK_FIELD = 'gbifurl'
-GBIF_OCCURRENCE_URL = 'http://www.gbif.org/occurrence'
-
-# .............................................................................
-# .                               BISON/ITIS constants                              .
-# .............................................................................
-# ......................................................
-# For parsing BISON Solr API response, updated Feb 2015
-# ......................................................
-BISON_OCCURRENCE_URL = 'http://bisonapi.usgs.ornl.gov/solr/occurrences/select'
-# For TSN query filtering on Binomial
-BISON_NAME_KEY = 'ITISscientificName'
-# For Occurrence query by TSN in hierarchy
-BISON_HIERARCHY_KEY = 'hierarchy_homonym_string'
-BISON_KINGDOM_KEY = 'kingdom'
-BISON_TSN_KEY = 'TSNs'
-# key = returned field name; val = (lmname, ogr type)
-BISON_RESPONSE_FIELDS = {
-                        'ITIScommonName': ('comname', OFTString),
-                        BISON_NAME_KEY: (ShortDWCNames.SCIENTIFIC_NAME, OFTString),
-                        'ITIStsn': ('itistsn', OFTInteger),
-                        BISON_TSN_KEY: None,
-                        'ambiguous': None,
-                        'basisOfRecord': (ShortDWCNames.BASIS_OF_RECORD, OFTString),
-                        'calculatedCounty': ('county', OFTString),
-                        'calculatedState': ('state', OFTString),
-                        'catalogNumber': (ShortDWCNames.CATALOG_NUMBER, OFTString),
-                        'collectionID': ('collid', OFTString),
-                        'computedCountyFips': None,
-                        'computedStateFips': None,
-                        'countryCode': ('ctrycode', OFTString),
-                        'decimalLatitude': (ShortDWCNames.DECIMAL_LATITUDE, OFTReal),
-                        'decimalLongitude':(ShortDWCNames.DECIMAL_LONGITUDE, OFTReal),
-                        'eventDate':('date', OFTString),
-                        # Space delimited, same as latlon
-                        'geo': None,
-                        BISON_HIERARCHY_KEY: ('tsn_hier', OFTString),
-                        'institutionID': ('instid', OFTString),
-                        BISON_KINGDOM_KEY: ('kingdom', OFTString),
-                        # Comma delimited, same as geo
-                        'latlon': ('latlon', OFTString),
-                        'occurrenceID': (ShortDWCNames.OCCURRENCE_ID, OFTInteger),
-                        'ownerInstitutionCollectionCode': ('instcode', OFTString),
-                        'pointPath': None,
-                        'providedCounty': None,
-                        'providedScientificName': None,
-                        'provider': ('provider', OFTString),
-                        'providerID': None,
-                        'recordedBy': (ShortDWCNames.RECORDED_BY, OFTString),
-                        'resourceID': None,
-                        # Use ITIS Scientific Name
-                        'scientificName': None,
-                        'stateProvince': ('stprov', OFTString),
-                        'year': (ShortDWCNames.YEAR, OFTInteger),
-                        # Very long integer
-                       '_version_': None
-                        }
-
-BISON_MIN_POINT_COUNT = 20
-BISON_MAX_POINT_COUNT = 5000000
-BISON_BBOX = (24, -125, 50, -66)
-
-BISON_BINOMIAL_REGEX = '/[A-Za-z]*[ ]{1,1}[A-Za-z]*/'
-BISON_TSN_FILTERS = {'facet': True,
-                     'facet.limit': -1,
-                     'facet.mincount': BISON_MIN_POINT_COUNT,
-                     'facet.field': BISON_TSN_KEY, 
-                     'rows': 0}
-
-BISON_OCC_FILTERS = {'rows': BISON_MAX_POINT_COUNT}
-
-
-# Common Q Filters
-BISON_QFILTERS = {'decimalLatitude': (BISON_BBOX[0], BISON_BBOX[2]),
-                   'decimalLongitude': (BISON_BBOX[1], BISON_BBOX[3]),
-                   'basisOfRecord': [(False, 'living'), (False, 'fossil')]}
-# Common Other Filters
-BISON_FILTERS = {'wt': 'json', 
-                 'json.nl': 'arrarr'}
-
-# Expected Response Dictionary Keys
-BISON_COUNT_KEYS = ['response', 'numFound']
-BISON_RECORD_KEYS = ['response', 'docs']
-BISON_TSN_LIST_KEYS = ['facet_counts', 'facet_fields', BISON_TSN_KEY]
-
-ITIS_DATA_NAMESPACE = 'http://data.itis_service.itis.usgs.gov/xsd'
-# Basic Web Services
-ITIS_TAXONOMY_HIERARCHY_URL = 'http://www.itis.gov/ITISWebService/services/ITISService/getFullHierarchyFromTSN'
-# JSON Web Services
-# ITIS_TAXONOMY_HIERARCHY_URL = 'http://www.itis.gov/ITISService/jsonservice/getFullHierarchyFromTSN'
-ITIS_TAXONOMY_KEY = 'tsn'
-ITIS_HIERARCHY_TAG = 'hierarchyList'
-ITIS_RANK_TAG = 'rankName'
-ITIS_TAXON_TAG = 'taxonName'
-ITIS_KINGDOM_KEY = 'Kingdom'
-ITIS_PHYLUM_DIVISION_KEY = 'Division'
-ITIS_CLASS_KEY = 'Class'
-ITIS_ORDER_KEY = 'Order'
-ITIS_FAMILY_KEY = 'Family'
-ITIS_GENUS_KEY = 'Genus'
-ITIS_SPECIES_KEY = 'Species'
-
-# .............................................................................
-# .                           iDigBio constants                               .
-# .............................................................................
-IDIGBIO_OCCURRENCE_URL = 'http://search.idigbio.org/idigbio/records'
-IDIGBIO_SEARCH_QUERY_KEY = '_search'
-
-IDIGBIO_ID_FIELD = 'uuid'
-IDIGBIO_LINK_FIELD = 'idigbiourl'
-IDIGBIO_EXPORT_FIELDS = {0: (IDIGBIO_ID_FIELD, OFTString), 
-                         1: (ShortDWCNames.DECIMAL_LATITUDE, OFTReal),
-                         2: (ShortDWCNames.DECIMAL_LONGITUDE, OFTReal),
-                         3: (ShortDWCNames.SCIENTIFIC_NAME, OFTString)
-                         }
-
-# Query to aggregate all georeferenced scientific names with minimun number (40) 
-# of occurrences
-IDIGBIO_AGG_SPECIES_GEO_MIN_40 = '{"query":{"bool":{"must_not":[{"term":{"lat":"0"}},{"term":{"lon":"0"}}]}},"size":0,"aggregations":{"my_agg":{"terms":{"field":"scientificname","min_doc_count":40,"size":100000}}},"filter":{"and":[{"exists":{"field":"geopoint"}},{"exists":{"field":"scientificname"}}]}}'
-IDIGBIO_SPECIMENS_BY_BINOMIAL = '{"query":{"prefix":{"scientificname":"__BINOMIAL__"}},"filter":{"and":[{"exists":{"field":"geopoint"}},{"exists":{"field":"scientificname"}}]},"fields":["uuid","scientificname","geopoint.lat","geopoint.lon"],"size":1000000}'
-IDIGBIO_QFILTERS = {}
-IDIGBIO_FILTERS = {}
-
-IDIGBIO_BINOMIAL_KEYS = ['aggregations', 'my_agg', 'buckets']
-
-IDIGBIO_BINOMIAL_REGEX = "(^[^ ]*) ([^ ]*)$"
-
-IDIGBIO_OCCURRENCE_KEYS = ['hits', 'hits']
-IDIGBIO_OCCURRENCE_CONTENT_KEY = 'fields'
-
-IDIGBIO_NAME_KEY = 'key'
-IDIGBIO_NAME_POSTFIX_FILTER = 'sp.'
-
 
 # .............................................................................
 # .                              Other constants                              .
 # .............................................................................
 DEFAULT_EPSG = 4326
+
+URL_ESCAPES = [ [" ", "%20"] ]
 
 class HTTPStatus:
    """

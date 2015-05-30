@@ -541,7 +541,7 @@ class UploadSDMDialog( _Controller, QDialog, Ui_Dialog):
          projid = index.model().data[index.row()][1] 
          
          guid = self.getGuid(projid)
-        
+         print "GUID ",guid
          if guid is not None:
                                      
             try:

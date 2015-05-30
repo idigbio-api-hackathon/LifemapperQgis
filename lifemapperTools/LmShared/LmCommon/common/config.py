@@ -28,27 +28,15 @@
           02110-1301, USA.
 """
 import ConfigParser
-import hashlib
 import os
+
+from LmCommon.common.singleton import singleton
 
 # Looks for a Lifemapper configuration file path environment variable.  If one
 #    cannot be found, raise an exception
 CONFIG_FILENAME = os.getenv('LIFEMAPPER_CONFIG_FILE') 
 # if CONFIG_FILENAME is None or len(CONFIG_FILENAME) == 0:
 #    raise Exception, "No configuration file found.  Set LIFEMAPPER_CONFIG_FILE environment variable"
-
-# .............................................................................
-def singleton(cls):
-   """
-   @summary: Creates singletons for all unique sets of arguments for a class
-   """
-   instances = {}
-   def getInstance(*args, **kwargs):
-      name = hashlib.md5(''.join([str(args), str(kwargs)])).hexdigest()
-      if name not in instances:
-         instances[name] = cls(*args, **kwargs)
-      return instances[name]
-   return getInstance
 
 # .............................................................................
 @singleton

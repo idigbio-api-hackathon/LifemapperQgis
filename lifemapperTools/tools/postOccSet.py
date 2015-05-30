@@ -61,7 +61,6 @@ class UploadOccSetDialog(QDialog, Ui_Dialog):
    def accept(self):
       # after upload, we recieve an occurrence id
       # which we need to pass back along with everything else to the postExp Dialog
-      
       if self.validate():
          self.uploadBut.setEnabled(False)
          try:
