@@ -257,7 +257,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       vectortype = "ogr"
       if fileExtension == ".csv":
          csvVectorpath = "file:///" + vectorpath
-         csvVectorpath += "?delimiter=,&xField=lon&yField=lat&crs=epsg:4723"
+         csvVectorpath += "?delimiter=,&xField=lon&yField=lat&crs=epsg:4326"
          vectorpath = vectorpath.replace('.csv', '.shp')
          vectorLayer = QgsVectorLayer(csvVectorpath,shapename,"delimitedtext")
          warningname = shapename    
@@ -265,7 +265,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             QMessageBox.warning(self,"status: ",
                "%s not valid" % (warningname))
          else:
-            vectorwriter = QgsVectorFileWriter.writeAsVectorFormat(vectorLayer,vectorpath,"utf-8",None,"ESRI Shapefile")
+            vectorwriter = QgsVectorFileWriter.writeAsVectorFormat(vectorLayer,
+                                       vectorpath,"utf-8",None,"ESRI Shapefile")
       vectorLayer = QgsVectorLayer(vectorpath,shapename,vectortype)
       warningname = shapename    
       if not vectorLayer.isValid():
