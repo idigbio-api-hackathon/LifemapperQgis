@@ -11,7 +11,8 @@ from constants import (ShortDWCNames, IDIGBIO_LIVE_NAME, IDIGBIO_OCCURRENCE_URL,
       BINOMIAL_REGEX, INVALIDSP_REGEX, IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD,
       IDIGBIO_DATA_KEY, IDIGBIO_IDX_KEY, IDIGBIO_OCCID_KEY, IDIGBIO_ATTR_KEY,
       IDIGBIO_SCINAME_KEY, IDIGBIO_PT_KEY, IDIGBIO_LAT_KEY, IDIGBIO_LON_KEY, 
-      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, IDIGBIO_RESPONSE_FIELDS)
+      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, IDIGBIO_RESPONSE_FIELDS,
+      IDIGBIO_DAY, IDIGBIO_MONTH, IDIGBIO_YEAR)
 
 
 # ...............................................
@@ -123,9 +124,10 @@ def getSpecimens(prefix, filename):
    @param prefix: The genus species string to match.
    @param maxReturned: (optional) The maximum number of results to return
    """
-   query =('?fields=["{0}","{1}","{2}.{3}","{4}","{5}"]&rq={{"{0}":{{"type":"prefix","value":"{6}"}}').format(
+   query =('?fields=["{0}","{1}","{2}.{3}","{4}","{5}","{2}.{6}","{2}.{7}","{2}.{8}"]&rq={{"{0}":{{"type":"prefix","value":"{9}"}}').format(
       IDIGBIO_SCINAME_KEY, IDIGBIO_PT_KEY, IDIGBIO_DATA_KEY, IDIGBIO_OCCID_KEY, 
-      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, prefix)
+      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, IDIGBIO_DAY, IDIGBIO_MONTH,
+      IDIGBIO_YEAR, prefix)
 
    query += ',"geopoint":{"type":"exists"}}&no_attribution'
    print query
@@ -136,7 +138,7 @@ def getSpecimens(prefix, filename):
    fsw = csv.writer(fs, dialect='excel')
    fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, IDIGBIO_OCCID_KEY, 
                  IDIGBIO_SCINAME_KEY, IDIGBIO_LAT_KEY,IDIGBIO_LON_KEY,
-                 IDIGBIO_ATTR_KEY])
+                 IDIGBIO_DAY, IDIGBIO_MONTH, IDIGBIO_YEAR, IDIGBIO_ATTR_KEY])
    limit = "&limit=" + str(IDIGBIO_SEARCH_LIMIT)
    j = 0
    for i in range(0, numPoints, IDIGBIO_SEARCH_LIMIT):
@@ -146,11 +148,23 @@ def getSpecimens(prefix, filename):
          occid = _getOptionalField(item, [IDIGBIO_DATA_KEY, IDIGBIO_OCCID_KEY])
          attributionLst = _getOptionalListField(item, IDIGBIO_ATTR_KEY, 'name')
          attribution = ','.join(attributionLst)
+         if IDIGBIO_DAY in item[IDIGBIO_DATA_KEY]:
+            day = item[IDIGBIO_DATA_KEY][IDIGBIO_DAY]
+         else:
+            day = ''
+         if IDIGBIO_MONTH in item[IDIGBIO_DATA_KEY]:
+            month = item[IDIGBIO_DATA_KEY][IDIGBIO_MONTH]
+         else:
+            month = ''
+         if IDIGBIO_YEAR in item[IDIGBIO_DATA_KEY]:
+            year = item[IDIGBIO_DATA_KEY][IDIGBIO_YEAR]
+         else:
+            year = ''
          fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
                        item[IDIGBIO_IDX_KEY][IDIGBIO_SCINAME_KEY], 
                        item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LAT_KEY], 
                        item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LON_KEY],
-                       attribution])
+                       day, month, year, attribution])
          j += 1
    fs.close()
     

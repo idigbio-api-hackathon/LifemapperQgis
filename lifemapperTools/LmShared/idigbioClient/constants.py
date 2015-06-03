@@ -39,6 +39,9 @@ IDIGBIO_OCCID_KEY = 'dwc:occurrenceID'
 IDIGBIO_SCINAME_KEY = 'scientificname'
 IDIGBIO_INSTNAME_KEY = 'institutionname'
 IDIGBIO_COLLNAME_KEY = 'collectionname'
+IDIGBIO_DAY = 'dwc:day'
+IDIGBIO_MONTH = 'dwc:month'
+IDIGBIO_YEAR = 'dwc:year'
 IDIGBIO_ATTR_KEY = 'attribution'
 
 IDIGBIO_RESPONSE_FIELDS = {IDIGBIO_ID_FIELD: (IDIGBIO_ID_FIELD, OFTString), 
