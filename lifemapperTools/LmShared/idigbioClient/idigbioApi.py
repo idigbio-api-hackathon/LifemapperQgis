@@ -160,16 +160,20 @@ def getSpecimens(prefix, filename, timeSlice=None):
       for offset in range(0, itemCount, IDIGBIO_SEARCH_LIMIT):
          print queryUrl
          for item in js["items"]:
-            uuid = item[IDIGBIO_ID_FIELD]
-            occid = _getOptionalField(item, DWCNames.OCCURRENCE_ID[long])
-            recby = _getOptionalField(item, DWCNames.RECORDED_BY[long])
-            yr = _getOptionalField(item, DWCNames.YEAR[long])
-            fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
-                          item[IDIGBIO_IDX_KEY][IDIGBIO_SCINAME_KEY], 
-                          item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LAT_KEY], 
-                          item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LON_KEY],
-                          recby, yr])
-            totalRetrieved += 1
+            try:
+               uuid = item[IDIGBIO_ID_FIELD]
+               occid = _getOptionalField(item, DWCNames.OCCURRENCE_ID[long])
+               recby = _getOptionalField(item, DWCNames.RECORDED_BY[long])
+               yr = _getOptionalField(item, DWCNames.YEAR[long])
+               fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
+                             item[IDIGBIO_IDX_KEY][IDIGBIO_SCINAME_KEY], 
+                             item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LAT_KEY], 
+                             item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LON_KEY],
+                             recby, yr])
+            except Exception, e:
+               print('Exception on record!! {0} {1}'.format(uuid, str(e)))
+            else:
+               totalRetrieved += 1
          if offset < itemCount:
             queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
                                                query, IDIGBIO_SEARCH_LIMIT, offset)
@@ -182,8 +186,7 @@ if __name__ == '__main__':
    output = getSpeciesHint('acacia', IDIGBIO_SEARCH_LIMIT)
    print output
    
-   getSpecimens('acacia_caven', '/tmp/acacia_caven.txt')
-   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt')
+   getSpecimens('peromyscus maniculatus', '/tmp/peromyscus_maniculatus.txt')
    getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
                          timeSlice=(1900, 1970))
    getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 

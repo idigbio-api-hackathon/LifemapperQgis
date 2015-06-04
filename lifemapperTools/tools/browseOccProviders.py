@@ -242,8 +242,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             except Exception, e:
                QMessageBox.warning(self, "status: ",'error: ' + str(e))
       else:
-         tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocName))
-         slices[0] = (endYear, tocName, tmpFname)
+         tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocBaseName))
+         slices[0] = (endYear, tocBaseName, tmpFname)
       return slices
    
 # .......................................
@@ -284,6 +284,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                elif self.serviceType == "live":
                   print '** live:', interval, tocBaseName
                   slices = self._getTimeSlices(interval, tocBaseName)
+                  print '   slices =', slices.keys()
                   for startYear in slices.keys():
                      (endYear, tocName, tmpFname) = slices[startYear]
                      print '  ... getting {0} for {1}-{2} into {3}'.format(
