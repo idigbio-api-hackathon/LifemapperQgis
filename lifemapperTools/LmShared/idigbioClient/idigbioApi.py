@@ -144,14 +144,12 @@ def _writeColumns(fsw):
    
 # ...............................................
 def _writeRecord(fsw, item, columns=None):
-   success = True
+   success = False
    lat = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
                                   IDIGBIO_LAT_KEY])
    lon = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
                                   IDIGBIO_LON_KEY])
-   if lat == 0 and lon == 0:
-      success = False
-   else:
+   if not (lat == 0 and lon == 0):
       uuid = item[IDIGBIO_ID_FIELD]
       idigurl = IDIGBIO_OCCURRENCE_URL + uuid
       occid = _getFieldVal(item, DWCNames.OCCURRENCE_ID[long])
@@ -177,10 +175,10 @@ def _writeRecord(fsw, item, columns=None):
             vals.append('Encoding error')
       try:
          fsw.writerow(vals)
+         success = True
       except Exception, e:
          print('Exception on writing!! {0} {1} {2}'.format(type(e), str(item), str(e)))
-         success = False
-      return success
+   return success
    
 # ...............................................
 def getSpecimens(prefix, filename, timeSlice=None):
@@ -214,14 +212,14 @@ def getSpecimens(prefix, filename, timeSlice=None):
       fs = open(filename,'wb')
       fsw = csv.writer(fs, dialect='excel')
       success = _writeColumns(fsw)
-      for offset in range(debugOffset, itemCount, IDIGBIO_SEARCH_LIMIT):
+      for offset in range(len(js["items"]), itemCount, IDIGBIO_SEARCH_LIMIT):
          for item in js["items"]:
             success = _writeRecord(fsw, item)
             if success:
                totalRetrieved += 1
          if offset < itemCount:
             queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
-                                               query, IDIGBIO_SEARCH_LIMIT, offset)
+                                               query, IDIGBIO_SEARCH_LIMIT, offset+1)
             js = _wgetLoadJson(queryUrl)
       print 'Wrote {0} items to {1}'.format(totalRetrieved, filename)
       fs.close()
@@ -229,7 +227,6 @@ def getSpecimens(prefix, filename, timeSlice=None):
 # ...............................................
 if __name__ == '__main__':
    output = getSpeciesHint('acacia', IDIGBIO_SEARCH_LIMIT)
-   print output
    
    # 100K+
 #   getSpecimens('peromyscus maniculatus', '/tmp/peromyscus_maniculatus.txt')
