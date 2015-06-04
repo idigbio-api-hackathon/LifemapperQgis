@@ -328,7 +328,6 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                   self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpFname,
                                                                   overwrite=True)
                elif self.serviceType == "live":
-                  print 'live'
                   tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocName))
                   print 'live', tocName
                   idb.getSpecimens(hit.name, tmpFname)
@@ -358,9 +357,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       QMessageBox.warning(self, "status: ",'From years: ' + str(fromYears))
       for fromYr in fromYears:
          (toDate, tocName, tmpFname) = occTimeSlices[fromYr]
-         QMessageBox.warning(self, "status: ",'Entry: ' + tocName + ', ' + tmpFname)
          if os.path.exists(tmpFname):
-            QMessageBox.warning(self, "status: ",'Exists: ' + tmpFname)
             fileName, fileExtension = os.path.splitext(tmpFname)
             vectortype = "ogr"
             if fileExtension == ".csv":
