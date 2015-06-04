@@ -143,7 +143,6 @@ def getSpecimens(prefix, filename, timeSlice=None):
    qrystr = ','.join(qryElts)
    query = '?{0}&rq={{{1}}}&no_attribution'.format(fldqry, qrystr)
    
-   firstOffset = 90000
    queryUrl = "{0}{1}&limit={2}&offset=0".format(IDIGBIO_SEARCH_URL_PREFIX,
                                                  query, IDIGBIO_SEARCH_LIMIT)
    totalRetrieved = 0
@@ -164,7 +163,7 @@ def getSpecimens(prefix, filename, timeSlice=None):
                     DWCNames.DAY[short],
                     DWCNames.MONTH[short],
                     DWCNames.YEAR[short] ])
-      for offset in range(firstOffset, itemCount, IDIGBIO_SEARCH_LIMIT):
+      for offset in range(0, itemCount, IDIGBIO_SEARCH_LIMIT):
          print queryUrl
          for item in js["items"]:
             try:
