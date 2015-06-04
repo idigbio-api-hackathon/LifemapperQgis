@@ -21,6 +21,7 @@ from constants import (ShortDWCNames, DWCNames, long, short, IDIGBIO_LIVE_NAME,
 # Wgets the content of the URL, loads the content as JSON
 def _wgetLoadJson(url):
    # Try to get data at least n times (in case the server is loaded and returning 504 - timeout)
+   j = None
    tries = 5
    data = []
    for i in range(0, tries):
@@ -94,13 +95,13 @@ def getSpeciesHint(prefix, maxReturned=None):
    return items
 
 # ...............................................
-def _getOptionalField(item, keys):
+def _getFieldVal(item, keys):
    if not (isinstance(keys, ListType) or isinstance(keys, TupleType)): 
       keys = keys.split('.')
    val = item
    for k in keys:
       try:
-         val = val[k]
+         val = val[k].decode('utf-8')
       except:
          val = ''
    return val
@@ -128,10 +129,11 @@ def getSpecimens(prefix, filename, timeSlice=None):
    @param maxReturned: (optional) The maximum number of results to return
    """
    qryElts = []
-   fldqry = 'fields=["{0}","{1}","{2}","{3}","{4}","{5}","{6}"]'.format(
+   fldqry = 'fields=["{0}","{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8}","{9}"]'.format(
       IDIGBIO_SCINAME_KEY, IDIGBIO_PT_KEY, DWCNames.OCCURRENCE_ID[long], 
-      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, DWCNames.RECORDED_BY[long], 
-      DWCNames.YEAR[long])
+      DWCNames.CATALOG_NUMBER[long], DWCNames.INSTITUTION_CODE[long], 
+      DWCNames.COLLECTION_CODE[long], DWCNames.RECORDED_BY[long], 
+      DWCNames.DAY[long], DWCNames.MONTH[long], DWCNames.YEAR[long])
    qryElts.append('"{0}":{{"type":"prefix","value":"{1}"}}'.format(
                                                    IDIGBIO_SCINAME_KEY, prefix))
    qryElts.append('"geopoint":{"type":"exists"}')
@@ -141,7 +143,7 @@ def getSpecimens(prefix, filename, timeSlice=None):
    qrystr = ','.join(qryElts)
    query = '?{0}&rq={{{1}}}&no_attribution'.format(fldqry, qrystr)
    
-   offset = 0
+   firstOffset = 90000
    queryUrl = "{0}{1}&limit={2}&offset=0".format(IDIGBIO_SEARCH_URL_PREFIX,
                                                  query, IDIGBIO_SEARCH_LIMIT)
    totalRetrieved = 0
@@ -153,25 +155,39 @@ def getSpecimens(prefix, filename, timeSlice=None):
       fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, 
                     DWCNames.OCCURRENCE_ID[short], 
                     DWCNames.SCIENTIFIC_NAME[short], 
+                    DWCNames.CATALOG_NUMBER[short], 
+                    DWCNames.INSTITUTION_CODE[short], 
+                    DWCNames.COLLECTION_CODE[short],
                     DWCNames.DECIMAL_LATITUDE[short],
                     DWCNames.DECIMAL_LONGITUDE[short], 
                     DWCNames.RECORDED_BY[short],
+                    DWCNames.DAY[short],
+                    DWCNames.MONTH[short],
                     DWCNames.YEAR[short] ])
-      for offset in range(0, itemCount, IDIGBIO_SEARCH_LIMIT):
+      for offset in range(firstOffset, itemCount, IDIGBIO_SEARCH_LIMIT):
          print queryUrl
          for item in js["items"]:
             try:
                uuid = item[IDIGBIO_ID_FIELD]
-               occid = _getOptionalField(item, DWCNames.OCCURRENCE_ID[long])
-               recby = _getOptionalField(item, DWCNames.RECORDED_BY[long])
-               yr = _getOptionalField(item, DWCNames.YEAR[long])
+               occid = _getFieldVal(item, DWCNames.OCCURRENCE_ID[long])
+               sciname = _getFieldVal(item, 
+                                      [IDIGBIO_IDX_KEY, IDIGBIO_SCINAME_KEY])
+               catnum = _getFieldVal(item, DWCNames.CATALOG_NUMBER[long])
+               instcode = _getFieldVal(item, DWCNames.INSTITUTION_CODE[long])
+               collcode = _getFieldVal(item, DWCNames.COLLECTION_CODE[long])
+               lat = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
+                                              IDIGBIO_LAT_KEY])
+               lon = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
+                                              IDIGBIO_LON_KEY])
+               recby = _getFieldVal(item, DWCNames.RECORDED_BY[long])
+               day = _getFieldVal(item, DWCNames.DAY[long])
+               month = _getFieldVal(item, DWCNames.MONTH[long])
+               year = _getFieldVal(item, DWCNames.YEAR[long])
                fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
-                             item[IDIGBIO_IDX_KEY][IDIGBIO_SCINAME_KEY], 
-                             item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LAT_KEY], 
-                             item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LON_KEY],
-                             recby, yr])
+                             sciname, catnum, instcode, collcode, lat, lon, 
+                             recby, day, month, year])
             except Exception, e:
-               print('Exception on record!! {0} {1}'.format(uuid, str(e)))
+               print('Exception on record!! {0} {1}'.format(str(item), str(e)))
             else:
                totalRetrieved += 1
          if offset < itemCount:
