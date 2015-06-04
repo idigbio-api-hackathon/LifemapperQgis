@@ -24,7 +24,6 @@
 """
 import sys
 import os
-import mx.DateTime as DT
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from qgis.core import *
@@ -232,7 +231,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
    def _getTimeSlices(self, interval, tocBaseName):
       slices = {}
       startYear = 1701
-      endYear = DT.now().year
+      endYear = 2015
       if interval is not None:
          for fromDate in range(startYear, endYear, interval):
             toDate = fromDate + interval
@@ -360,8 +359,6 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       for fromYr in fromYears:
          (toDate, tocName, tmpFname) = occTimeSlices[fromYr]
          QMessageBox.warning(self, "status: ",'Entry: ' + tocName + ', ' + tmpFname)
-#      for tocName, (tmpFname, dateRange) in occTimeSlices.iteritems():
-#         QMessageBox.warning(self, "status: ",'Entry: ' + tocName + ', ' + tmpFname)
          if os.path.exists(tmpFname):
             QMessageBox.warning(self, "status: ",'Exists: ' + tmpFname)
             fileName, fileExtension = os.path.splitext(tmpFname)
