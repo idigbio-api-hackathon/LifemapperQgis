@@ -5,7 +5,7 @@ import re
 import urllib
 import urllib2
 import time
-from types import ListType, TupleType
+from types import ListType, TupleType, StringType, UnicodeType
 
 from constants import (ShortDWCNames, DWCNames, long, short, IDIGBIO_LIVE_NAME, 
       IDIGBIO_OCCURRENCE_URL,
@@ -101,8 +101,8 @@ def _getFieldVal(item, keys):
    val = item
    for k in keys:
       try:
-         val = val[k].decode('utf-8')
-      except:
+         val = val[k]
+      except Exception, e:
          val = ''
    return val
    
@@ -122,6 +122,66 @@ def _getOptionalListField(item, listKey, fldKey):
    return vals
 
 # ...............................................
+def _writeColumns(fsw):
+   try:
+      fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, 
+                    DWCNames.OCCURRENCE_ID[short], 
+                    DWCNames.SCIENTIFIC_NAME[short], 
+                    DWCNames.CATALOG_NUMBER[short], 
+                    DWCNames.INSTITUTION_CODE[short], 
+                    DWCNames.COLLECTION_CODE[short],
+                    DWCNames.DECIMAL_LATITUDE[short],
+                    DWCNames.DECIMAL_LONGITUDE[short], 
+                    DWCNames.RECORDED_BY[short],
+                    DWCNames.DAY[short],
+                    DWCNames.MONTH[short],
+                    DWCNames.YEAR[short] ])
+   except Exception, e:
+      return False
+   else:
+      return True
+   
+# ...............................................
+def _writeRecord(fsw, item, columns=None):
+   success = True
+   lat = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
+                                  IDIGBIO_LAT_KEY])
+   lon = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
+                                  IDIGBIO_LON_KEY])
+   if lat == 0 and lon == 0:
+      success = False
+   else:
+      uuid = item[IDIGBIO_ID_FIELD]
+      idigurl = IDIGBIO_OCCURRENCE_URL + uuid
+      occid = _getFieldVal(item, DWCNames.OCCURRENCE_ID[long])
+      sciname = _getFieldVal(item, 
+                             [IDIGBIO_IDX_KEY, IDIGBIO_SCINAME_KEY])
+      catnum = _getFieldVal(item, DWCNames.CATALOG_NUMBER[long])
+      instcode = _getFieldVal(item, DWCNames.INSTITUTION_CODE[long])
+      collcode = _getFieldVal(item, DWCNames.COLLECTION_CODE[long])
+      recby = _getFieldVal(item, DWCNames.RECORDED_BY[long])
+      day = _getFieldVal(item, DWCNames.DAY[long])
+      month = _getFieldVal(item, DWCNames.MONTH[long])
+      year = _getFieldVal(item, DWCNames.YEAR[long])
+      vals = []
+      for v in [uuid, idigurl, occid, sciname, catnum, instcode, collcode, 
+                lat, lon, recby, day, month, year]:
+         try:
+            if isinstance(v, StringType) or isinstance(v, UnicodeType):
+               vals.append(v.encode('utf-8'))
+            else:
+               vals.append(v)
+         except Exception, e:
+            print('Exception in encoding!! {0} {1}'.format(type(e), str(e)))
+            vals.append('Encoding error')
+      try:
+         fsw.writerow(vals)
+      except Exception, e:
+         print('Exception on writing!! {0} {1} {2}'.format(type(e), str(item), str(e)))
+         success = False
+      return success
+   
+# ...............................................
 def getSpecimens(prefix, filename, timeSlice=None):
    """
    @summary: Queries for all specimens with a species prefix.
@@ -137,58 +197,72 @@ def getSpecimens(prefix, filename, timeSlice=None):
    qryElts.append('"{0}":{{"type":"prefix","value":"{1}"}}'.format(
                                                    IDIGBIO_SCINAME_KEY, prefix))
    qryElts.append('"geopoint":{"type":"exists"}')
-   if timeSlice is not None and len(timeSlice) == 2:
+   if timeSlice is not None and len(timeSlice) == 2 and timeSlice[0] > 0:
       qryElts.append('"datecollected": {{"type": "range","gte": "{0}", "lt": "{1}"}}'.format(
                                        timeSlice[0], timeSlice[1]))
    qrystr = ','.join(qryElts)
    query = '?{0}&rq={{{1}}}&no_attribution'.format(fldqry, qrystr)
    
-   queryUrl = "{0}{1}&limit={2}&offset=0".format(IDIGBIO_SEARCH_URL_PREFIX,
-                                                 query, IDIGBIO_SEARCH_LIMIT)
+   debugOffset = 0
+   queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
+                                       query, IDIGBIO_SEARCH_LIMIT, debugOffset)
    totalRetrieved = 0
    js = _wgetLoadJson(queryUrl)
    itemCount = int(js["itemCount"])
    if itemCount > 0:
       fs = open(filename,'wb')
       fsw = csv.writer(fs, dialect='excel')
-      fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, 
-                    DWCNames.OCCURRENCE_ID[short], 
-                    DWCNames.SCIENTIFIC_NAME[short], 
-                    DWCNames.CATALOG_NUMBER[short], 
-                    DWCNames.INSTITUTION_CODE[short], 
-                    DWCNames.COLLECTION_CODE[short],
-                    DWCNames.DECIMAL_LATITUDE[short],
-                    DWCNames.DECIMAL_LONGITUDE[short], 
-                    DWCNames.RECORDED_BY[short],
-                    DWCNames.DAY[short],
-                    DWCNames.MONTH[short],
-                    DWCNames.YEAR[short] ])
-      for offset in range(0, itemCount, IDIGBIO_SEARCH_LIMIT):
-         print queryUrl
+      success = _writeColumns(fsw)
+#      fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, 
+#                    DWCNames.OCCURRENCE_ID[short], 
+#                    DWCNames.SCIENTIFIC_NAME[short], 
+#                    DWCNames.CATALOG_NUMBER[short], 
+#                    DWCNames.INSTITUTION_CODE[short], 
+#                    DWCNames.COLLECTION_CODE[short],
+#                    DWCNames.DECIMAL_LATITUDE[short],
+#                    DWCNames.DECIMAL_LONGITUDE[short], 
+#                    DWCNames.RECORDED_BY[short],
+#                    DWCNames.DAY[short],
+#                    DWCNames.MONTH[short],
+#                    DWCNames.YEAR[short] ])
+      for offset in range(debugOffset, itemCount, IDIGBIO_SEARCH_LIMIT):
          for item in js["items"]:
-            try:
-               uuid = item[IDIGBIO_ID_FIELD]
-               occid = _getFieldVal(item, DWCNames.OCCURRENCE_ID[long])
-               sciname = _getFieldVal(item, 
-                                      [IDIGBIO_IDX_KEY, IDIGBIO_SCINAME_KEY])
-               catnum = _getFieldVal(item, DWCNames.CATALOG_NUMBER[long])
-               instcode = _getFieldVal(item, DWCNames.INSTITUTION_CODE[long])
-               collcode = _getFieldVal(item, DWCNames.COLLECTION_CODE[long])
-               lat = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
-                                              IDIGBIO_LAT_KEY])
-               lon = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
-                                              IDIGBIO_LON_KEY])
-               recby = _getFieldVal(item, DWCNames.RECORDED_BY[long])
-               day = _getFieldVal(item, DWCNames.DAY[long])
-               month = _getFieldVal(item, DWCNames.MONTH[long])
-               year = _getFieldVal(item, DWCNames.YEAR[long])
-               fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
-                             sciname, catnum, instcode, collcode, lat, lon, 
-                             recby, day, month, year])
-            except Exception, e:
-               print('Exception on record!! {0} {1}'.format(str(item), str(e)))
-            else:
+            success = _writeRecord(fsw, item)
+            if success:
                totalRetrieved += 1
+#            uuid = item[IDIGBIO_ID_FIELD]
+#            idigurl = IDIGBIO_OCCURRENCE_URL + uuid
+#            occid = _getFieldVal(item, DWCNames.OCCURRENCE_ID[long])
+#            sciname = _getFieldVal(item, 
+#                                   [IDIGBIO_IDX_KEY, IDIGBIO_SCINAME_KEY])
+#            catnum = _getFieldVal(item, DWCNames.CATALOG_NUMBER[long])
+#            instcode = _getFieldVal(item, DWCNames.INSTITUTION_CODE[long])
+#            collcode = _getFieldVal(item, DWCNames.COLLECTION_CODE[long])
+#            lat = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
+#                                           IDIGBIO_LAT_KEY])
+#            lon = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
+#                                           IDIGBIO_LON_KEY])
+#            recby = _getFieldVal(item, DWCNames.RECORDED_BY[long])
+#            day = _getFieldVal(item, DWCNames.DAY[long])
+#            month = _getFieldVal(item, DWCNames.MONTH[long])
+#            year = _getFieldVal(item, DWCNames.YEAR[long])
+#            vals = []
+#            for v in [uuid, idigurl, occid, sciname, catnum, instcode, collcode, 
+#                      lat, lon, recby, day, month, year]:
+#               try:
+#                  if isinstance(v, StringType) or isinstance(v, UnicodeType):
+#                     vals.append(v.encode('utf-8'))
+#                  else:
+#                     vals.append(v)
+#               except Exception, e:
+#                  print('Exception in encoding!! {0} {1}'.format(type(e), str(e)))
+#                  vals.append('Encoding error')
+#            try:
+#               fsw.writerow(vals)
+#            except Exception, e:
+#               print('Exception on writing!! {0} {1} {2}'.format(type(e), str(item), str(e)))
+#            else:
+#               totalRetrieved += 1
          if offset < itemCount:
             queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
                                                query, IDIGBIO_SEARCH_LIMIT, offset)
@@ -201,11 +275,14 @@ if __name__ == '__main__':
    output = getSpeciesHint('acacia', IDIGBIO_SEARCH_LIMIT)
    print output
    
-   getSpecimens('peromyscus maniculatus', '/tmp/peromyscus_maniculatus.txt')
-   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
-                         timeSlice=(1900, 1970))
-   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
-                         timeSlice=(1970,2015))
+   # 100K+
+#   getSpecimens('peromyscus maniculatus', '/tmp/peromyscus_maniculatus.txt')
+
+   getSpecimens('peromyscus attwateri', '/tmp/peromyscus_attwateri.csv')
+#   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
+#                         timeSlice=(1900, 1970))
+#   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
+#                         timeSlice=(1970,2015))
    
 
    

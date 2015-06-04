@@ -355,7 +355,6 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
    def addOccsetsToCanvas(self, occTimeSlices):
       fromYears = occTimeSlices.keys()
       fromYears.sort()
-      QMessageBox.warning(self, "status: ",'From years: ' + str(fromYears))
       for fromYr in fromYears:
          (toDate, tocName, tmpFname) = occTimeSlices[fromYr]
          if os.path.exists(tmpFname):
