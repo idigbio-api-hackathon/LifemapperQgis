@@ -219,7 +219,7 @@ def getSpecimens(prefix, filename, timeSlice=None):
                totalRetrieved += 1
          if offset < itemCount:
             queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
-                                               query, IDIGBIO_SEARCH_LIMIT, offset+1)
+                                               query, IDIGBIO_SEARCH_LIMIT, offset)
             js = _wgetLoadJson(queryUrl)
       print 'Wrote {0} items to {1}'.format(totalRetrieved, filename)
       fs.close()
