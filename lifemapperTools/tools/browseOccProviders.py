@@ -29,14 +29,14 @@ from PyQt4.QtGui import *
 from qgis.core import *
 from qgis.gui import *
 import lifemapperTools as LM
-from lifemapperTools.common.lmListModel import BackSpaceEventHandler, EnterTextEventHandler, \
-                                               LmListModel
+from lifemapperTools.common.lmListModel import (BackSpaceEventHandler, 
+                              EnterTextEventHandler, LmListModel)
 from LmClient.lmClientLib import LMClient, OutOfDateException
 import idigbioClient.idigbioApi as idb
 from idigbioClient.constants import DWCNames, long, short
 
+# ..............................................................................
 class Ui_Dialog(object):
-   
    def setupUi(self):
       
       self.resize(800, 690)
@@ -45,13 +45,9 @@ class Ui_Dialog(object):
       self.setSizeGripEnabled(True)
       
       self.outerGrid = QGridLayout(self)
-      
-      
       self.gridLayout = QGridLayout()
-      # ?
       self.gridLayout.setRowMinimumHeight(0,300)
       self.gridLayout.setColumnMinimumWidth(0,300)
-      
       self.outerGrid.addLayout(self.gridLayout,0,0,1,1)
       
       self.inputGroup = QGroupBox()
@@ -59,16 +55,14 @@ class Ui_Dialog(object):
       self.inputGroup.setStyle(self.style)
       self.inputGroup.setTitle('Search')
       
-      
       self.hintLineEdit = QLineEdit()
       self.gridLayout.addWidget(self.hintLineEdit,0,0,1,1)
       
       self.inputGroup.setLayout(self.gridLayout)
       self.outerGrid.addWidget(self.inputGroup,0,0,1,1)
       
-      
+# ..............................................................................
 class BrowseOccProviderDialog(QDialog, Ui_Dialog):
-   
    def __init__(self, iface):
       """
       @param iface: QGIS interface object
@@ -80,10 +74,9 @@ class BrowseOccProviderDialog(QDialog, Ui_Dialog):
       QDialog.__init__(self)
       self.setupUi()
       
+# ..............................................................................
 class Ui_Dock(object):  
-   
    def setupUi(self,DockWidget): 
-      
       DockWidget.setWindowTitle("Occurrence Data")   
       #DockWidget.resize(429, 602)
       
@@ -95,7 +88,6 @@ class Ui_Dock(object):
       self.logoLabel = QLabel()
       self.logoPixMap = QPixmap(":/plugins/lifemapperTools/icons/lm_poster_276_45.png")
       self.logoLabel.setPixmap(self.logoPixMap)
-      
       
       self.vertLayout = QVBoxLayout(self.parentWidget)
       #self.hintLine  = QLineEdit() #occSetCombo
@@ -137,9 +129,8 @@ class Ui_Dock(object):
       
       DockWidget.setWidget(self.parentWidget)
       
-
+# ..............................................................................
 class BrowseOccProviderDock(QDockWidget, Ui_Dock):
-   
    def __init__(self, iface, action = None):
       QDockWidget.__init__(self,None)
       
@@ -156,10 +147,9 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       self.occSetCombo.setModel(self.occListModel)
       self.BackSpaceEvent = BackSpaceEventHandler()
       self.occSetCombo.installEventFilter(self.BackSpaceEvent)
-# ......................................
 
+# ...............................................
    def showHideBrowseDock(self):
-      
       if self.isVisible():
          #if self.client != None:
             #self.client.logout()    
@@ -170,9 +160,9 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             self.signIn() 
             self.loadInstanceCombo()
          self.show()
+         
 # .......................................
    def providerChanged(self, idx):
-      
       self.occListModel.updateList([])
       self.occSetCombo.clearEditText()
       if idx != 0 and idx != -1:
@@ -189,7 +179,6 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          self.timeCombo.setEnabled(False)
          
 # .......................................
-
    def setTmpDir(self):  
       """
       NEED TO TEST ON WINDOWS!
@@ -213,6 +202,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
    @property
    def tmpDir(self):
       return self._tmpDir
+
 # .......................................
    @property
    def serviceRoot(self):
@@ -227,7 +217,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
    def serviceRoot(self, value):      
       self._serviceRoot = value
       
-# .......................................
+# ...............................................
    def _getTimeSlices(self, interval, tocBaseName):
       slices = {}
       startYear = 1701
@@ -246,7 +236,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          slices[0] = (endYear, tocBaseName, tmpFname)
       return slices
    
-# .......................................
+# ...............................................
    def _getChoices(self):
       tocName = interval = hit = None
       provider = self.providerCombo.currentText()
@@ -268,7 +258,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                interval = int(timeChoice)
       return tocName, provider, hit, interval
 
-# .......................................
+# ...............................................
    def pullAndWriteShapeFiles(self):
       if self.serviceRoot:
          tocBaseName, provider, hit, interval = self._getChoices()
@@ -310,7 +300,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       else:
          QMessageBox.warning(self,"status: ", "serviceRoot is not set")
                       
-# .......................................
+# ...............................................
    def downloadShpFile(self):
       if self.serviceRoot:
          provider = self.providerCombo.currentText()
@@ -351,7 +341,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             message = "No tmp directory set in Environment variable, try setting TMPDIR"
             QMessageBox.warning(self,"status: ",message)  
                
-# ........................................
+# ...............................................
    def addOccsetsToCanvas(self, occTimeSlices):
       fromYears = occTimeSlices.keys()
       fromYears.sort()
@@ -362,8 +352,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             vectortype = "ogr"
             if fileExtension == ".csv":
                csvPath = "file:///{0}?delimiter=,&xField={1}&yField={2}&crs=epsg:4326".format(
-                          tmpFname, DWCNames.DECIMAL_LATITUDE[short],
-                          DWCNames.DECIMAL_LONGITUDE[short])
+                          tmpFname, DWCNames.DECIMAL_LONGITUDE[short], 
+                          DWCNames.DECIMAL_LATITUDE[short])
                shpFname = fileName + '.shp'
                vectorLayer = QgsVectorLayer(csvPath, tocName, "delimitedtext")
                if not vectorLayer.isValid():
@@ -377,7 +367,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                   else:
                      QgsMapLayerRegistry.instance().addMapLayer(vectorLayer)
          
-# ........................................
+# ...............................................
    def addToCanvas(self, vectorpath, shapename):
       fileName, fileExtension = os.path.splitext(vectorpath)
       vectortype = "ogr"
@@ -403,9 +393,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          QgsMapLayerRegistry.instance().addMapLayer(vectorLayer)
          #self.iface.zoomFull()
                            
-# .......................................
+# ...............................................
    def signIn(self):
-      
       try:
          cl = LMClient()
       except OutOfDateException, e:
@@ -432,9 +421,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                                              message,
                                              QMessageBox.Ok) 
 
-# .............................................................................
+# ...............................................
    def loadInstanceCombo(self):
-      
       self.providerCombo.clear()
       self.providerCombo.clearEditText()
       try:
@@ -442,18 +430,15 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       except:
          pass
       else:
-         
          self.providerCombo.addItem('Select Provider',userData='None')
-         
          for idx,instance in enumerate(instanceObjs):
-            
             self.providerCombo.addItem(instance[0], [instance[1], "snapshot"])
 
       for idx,instance in enumerate(idb.getLiveInstances()):
          self.providerCombo.addItem(instance[0], [instance[1], "live"])
-# .......................................
+
+# ...............................................
    def setPreviewDownloadText(self, displayName):
-      
       if id == '':
          self.download.setEnabled(False)
          self.download.setToolTip("Load Data from search")
@@ -461,9 +446,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          self.download.setEnabled(True)
          self.download.setToolTip("Load Data for %s" % (displayName))
 
-# .............................................................................         
+# ...............................................
    def getIdxFromTuples(self,currentText):
-      
       idx = 0
       # sO search result Object
       for sH in self.namedTuples:
@@ -471,9 +455,9 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             break
          idx += 1
       return idx
-# .............................................................................
+
+# ...............................................
    def onTextChange(self, text):
-      
       displayName = text
       noChars = len(displayName)
       # %20
@@ -500,10 +484,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          
          self.searchOccSets(text)
          
-
-# ........................................
+# ...............................................
    def searchOccSets(self,searchText=''):
-      
       root = self.serviceRoot
       try:
          if self.serviceType == "snapshot":
@@ -521,6 +503,7 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
             items.append(SpeciesSearchResult('', '', '',''))
          self.occListModel.updateList(items)
 
+# ..............................................................................
 class BrowseModel(LmListModel):
 
    def data(self, index, role):
@@ -544,6 +527,7 @@ class BrowseModel(LmListModel):
          return    
    
 
+# ..............................................................................
 class SpeciesSearchResult(object):
    """
    @summary: Data structure for species search results (occurrence sets)
@@ -567,7 +551,6 @@ class SpeciesSearchResult(object):
       @summary: Creates a string representation of the SpeciesSearchResult 
                    object
       """
-      
       return "%s (%s points)" % (self.displayName, self.numPoints)
             
    

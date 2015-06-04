@@ -7,7 +7,7 @@ import urllib2
 import time
 from types import ListType, TupleType, StringType, UnicodeType
 
-from constants import (ShortDWCNames, DWCNames, long, short, IDIGBIO_LIVE_NAME, 
+from constants import (DWCNames, long, short, IDIGBIO_LIVE_NAME, 
       IDIGBIO_OCCURRENCE_URL,
       IDIGBIO_SEARCH_URL_PREFIX, IDIGBIO_TOP_URL_PREFIX, IDIGBIO_SEARCH_LIMIT,
       BINOMIAL_REGEX, INVALIDSP_REGEX, IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD,
@@ -36,6 +36,7 @@ def _wgetLoadJson(url):
          continue
       break
    if data:
+      print url
       j = json.load(data)
    return j
 
@@ -233,7 +234,7 @@ if __name__ == '__main__':
    # 100K+
 #   getSpecimens('peromyscus maniculatus', '/tmp/peromyscus_maniculatus.txt')
 
-   getSpecimens('peromyscus attwateri', '/tmp/peromyscus_attwateri.csv')
+   getSpecimens('peromyscus eremicus', '/tmp/peromyscus_eremicus.csv')
 #   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
 #                         timeSlice=(1900, 1970))
 #   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
