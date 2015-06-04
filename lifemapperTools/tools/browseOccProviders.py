@@ -231,17 +231,20 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
 # .......................................
    def _getTimeSlices(self, interval, tocBaseName):
       slices = {}
+      startYear = 1701
+      endYear = DT.now().year
       if interval is not None:
-         startYear = 1700
-         endYear = DT.now().year
          for fromDate in range(startYear, endYear, interval):
             toDate = fromDate + interval
-            print 'Range = ', fromDate, toDate
             tocName = '{0}_{1}-{2}'.format(tocBaseName, fromDate, toDate)
             tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocName))
-            slices[tocName] = (tmpFname, (fromDate, toDate))
+            try:
+               slices[fromDate] = (toDate, tocName, tmpFname)
+            except Exception, e:
+               QMessageBox.warning(self, "status: ",'error: ' + str(e))
       else:
-         slices[tocName] = (os.path.join(self.tmpDir,"%s.csv" % (tocName)),None)
+         tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocName))
+         slices[0] = (endYear, tocName, tmpFname)
       return slices
    
 # .......................................
@@ -269,30 +272,33 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
 # .......................................
    def pullAndWriteShapeFiles(self):
       if self.serviceRoot:
-         tocName, provider, hit, interval = self._getChoices()
-         if tocName is not None and self.tmpDir is not None:
+         tocBaseName, provider, hit, interval = self._getChoices()
+         print tocBaseName, provider, hit, interval
+         if tocBaseName is not None and self.tmpDir is not None:
             try:
                zeroKeys = []
                if self.serviceType == "snapshot":
-                  tmpFname = os.path.join(self.tmpDir,"%s.shp" % (tocName))
-                  slices = {tocName: (tmpFname, None)}
+                  tmpFname = os.path.join(self.tmpDir,"%s.shp" % (tocBaseName))
+                  slices = {0: (None, tocBaseName, tmpFname)}
                   self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpFname,
                                                                   overwrite=True)
                elif self.serviceType == "live":
-                  print '** live:', interval, tocName
-                  slices = self._getTimeSlices(interval, tocName)
-                  for currTocName in slices.keys():
-                     (tmpFname, dateRange) = slices[currTocName]
-                     print '  ... getting {0} for {1} into {2}'.format(hit.name, 
-                                                            dateRange, tmpFname)
-                     idb.getSpecimens(hit.name, tmpFname, timeSlice=dateRange)
+                  print '** live:', interval, tocBaseName
+                  slices = self._getTimeSlices(interval, tocBaseName)
+                  for startYear in slices.keys():
+                     (endYear, tocName, tmpFname) = slices[startYear]
+                     print '  ... getting {0} for {1}-{2} into {3}'.format(
+                                         hit.name, startYear, endYear, tmpFname)
+                     idb.getSpecimens(hit.name, tmpFname, 
+                                      timeSlice=(startYear, endYear))
                      if not os.path.exists(tmpFname):
-                        zeroKeys.append(currTocName)
+                        zeroKeys.append(startYear)
             except Exception, e:
-               pass
+               print 'Exception!! ', str(e)
             else:
                for empty in zeroKeys:
                   slices.pop(empty)
+               print 'Remaining keys = ' + str(slices.keys())
                try:
                   self.addOccsetsToCanvas(slices)
                except Exception, e:
@@ -301,6 +307,8 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          else:
             message = "No tmp directory set in Environment variable, try setting TMPDIR"
             QMessageBox.warning(self,"status: ",message)
+      else:
+         QMessageBox.warning(self,"status: ", "serviceRoot is not set")
                       
 # .......................................
    def downloadShpFile(self):
@@ -346,9 +354,16 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                
 # ........................................
    def addOccsetsToCanvas(self, occTimeSlices):
-      for tocName, (tmpFname, dateRange) in occTimeSlices.iteritems():
+      fromYears = occTimeSlices.keys()
+      fromYears.sort()
+      QMessageBox.warning(self, "status: ",'From years: ' + str(fromYears))
+      for fromYr in fromYears:
+         (toDate, tocName, tmpFname) = occTimeSlices[fromYr]
+         QMessageBox.warning(self, "status: ",'Entry: ' + tocName + ', ' + tmpFname)
+#      for tocName, (tmpFname, dateRange) in occTimeSlices.iteritems():
 #         QMessageBox.warning(self, "status: ",'Entry: ' + tocName + ', ' + tmpFname)
          if os.path.exists(tmpFname):
+            QMessageBox.warning(self, "status: ",'Exists: ' + tmpFname)
             fileName, fileExtension = os.path.splitext(tmpFname)
             vectortype = "ogr"
             if fileExtension == ".csv":
