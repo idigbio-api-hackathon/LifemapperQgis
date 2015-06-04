@@ -24,6 +24,7 @@
 """
 import sys
 import os
+import mx.DateTime as DT
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from qgis.core import *
@@ -33,6 +34,7 @@ from lifemapperTools.common.lmListModel import BackSpaceEventHandler, EnterTextE
                                                LmListModel
 from LmClient.lmClientLib import LMClient, OutOfDateException
 import idigbioClient.idigbioApi as idb
+from idigbioClient.constants import DWCNames, long, short
 
 class Ui_Dialog(object):
    
@@ -107,6 +109,13 @@ class Ui_Dock(object):
       self.occSetCombo.textChanged.connect(self.onTextChange) 
       self.occSetCombo.setEnabled(False)
       
+      self.timeCombo = QComboBox()
+      self.timeCombo.setEditable(False)
+      self.timeCombo.setAutoCompletion(False)
+      self.timeModel = BrowseModel(['All', '1', '5', '10', '50', '100'], parent = self)
+      self.timeCombo.setModel(self.timeModel)
+      self.timeCombo.setEnabled(False)
+
       self.providerCombo = QComboBox()
       self.providerCombo.setMinimumHeight(26)
       
@@ -116,13 +125,14 @@ class Ui_Dock(object):
       self.providerCombo.currentIndexChanged.connect(self.providerChanged)
       
       self.download = QPushButton("Get Shapefile")
-      self.download.clicked.connect(self.downloadShpFile)
-      
+#      self.download.clicked.connect(self.downloadShpFile)
+      self.download.clicked.connect(self.pullAndWriteShapeFiles)
       self.vertLayout.addWidget(self.logoLabel)
       self.vertLayout.addWidget(QWidget())
       self.vertLayout.addWidget(self.providerCombo)
       self.vertLayout.addWidget(QWidget())
       self.vertLayout.addWidget(self.occSetCombo)
+      self.vertLayout.addWidget(self.timeCombo)
       self.vertLayout.addWidget(QWidget())
       self.vertLayout.addWidget(self.download)
       
@@ -169,10 +179,16 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
       if idx != 0 and idx != -1:
          self.serviceRoot, self.serviceType = self.providerCombo.itemData(idx, role=Qt.UserRole)
          self.occSetCombo.setEnabled(True)
+         if self.serviceType == "live":
+            self.timeCombo.setEnabled(True)
+         else:
+            self.timeCombo.setEnabled(False)
       else:
          self.serviceRoot = None
          self.serviceType = None
          self.occSetCombo.setEnabled(False)
+         self.timeCombo.setEnabled(False)
+         
 # .......................................
 
    def setTmpDir(self):  
@@ -206,58 +222,160 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
          pCurrentIdx = self.providerCombo.currentIndex()
          if pCurrentIdx != 0 and pCurrentIdx != -1:
             self._serviceRoot, self.serviceType = self.providerCombo.itemData(pCurrentIdx, role=Qt.UserRole)
-      
       return self._serviceRoot
    
    @serviceRoot.setter   
    def serviceRoot(self, value):      
       self._serviceRoot = value
+      
+# .......................................
+   def _getTimeSlices(self, interval, tocBaseName):
+      slices = {}
+      if interval is not None:
+         startYear = 1700
+         endYear = DT.now().year
+         for fromDate in range(startYear, endYear, interval):
+            toDate = fromDate + interval
+            print 'Range = ', fromDate, toDate
+            tocName = '{0}_{1}-{2}'.format(tocBaseName, fromDate, toDate)
+            tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocName))
+            slices[tocName] = (tmpFname, (fromDate, toDate))
+      else:
+         slices[tocName] = (os.path.join(self.tmpDir,"%s.csv" % (tocName)),None)
+      return slices
+   
+# .......................................
+   def _getChoices(self):
+      tocName = interval = hit = None
+      provider = self.providerCombo.currentText()
+      sHcurrentIdx = self.occSetCombo.currentIndex()
+      timeCurrentIdx = self.timeCombo.currentIndex()
+      try:
+         hit = self.occListModel.listData[sHcurrentIdx].searchHit 
+      except Exception, e:
+         pass
+      else:
+         tocName = '%s_%s' % (provider, hit.name)
+         try:
+            timeChoice = self.timeModel.listData[timeCurrentIdx]
+         except Exception, e:
+            print 'Exception on timeIdx {0} ({1})'.format(str(timeCurrentIdx), 
+                                                          str(e))
+         else:
+            if timeChoice != 'All':
+               interval = int(timeChoice)
+      return tocName, provider, hit, interval
+
+# .......................................
+   def pullAndWriteShapeFiles(self):
+      if self.serviceRoot:
+         tocName, provider, hit, interval = self._getChoices()
+         if tocName is not None and self.tmpDir is not None:
+            try:
+               zeroKeys = []
+               if self.serviceType == "snapshot":
+                  tmpFname = os.path.join(self.tmpDir,"%s.shp" % (tocName))
+                  slices = {tocName: (tmpFname, None)}
+                  self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpFname,
+                                                                  overwrite=True)
+               elif self.serviceType == "live":
+                  print '** live:', interval, tocName
+                  slices = self._getTimeSlices(interval, tocName)
+                  for currTocName in slices.keys():
+                     (tmpFname, dateRange) = slices[currTocName]
+                     print '  ... getting {0} for {1} into {2}'.format(hit.name, 
+                                                            dateRange, tmpFname)
+                     idb.getSpecimens(hit.name, tmpFname, timeSlice=dateRange)
+                     if not os.path.exists(tmpFname):
+                        zeroKeys.append(currTocName)
+            except Exception, e:
+               pass
+            else:
+               for empty in zeroKeys:
+                  slices.pop(empty)
+               try:
+                  self.addOccsetsToCanvas(slices)
+               except Exception, e:
+                  message = "couldn't add shp file to canvas "+str(e)
+                  QMessageBox.warning(self,"status: ", message)                  
+         else:
+            message = "No tmp directory set in Environment variable, try setting TMPDIR"
+            QMessageBox.warning(self,"status: ",message)
+                      
 # .......................................
    def downloadShpFile(self):
-      
       if self.serviceRoot:
          provider = self.providerCombo.currentText()
          sHcurrentIdx = self.occSetCombo.currentIndex()
+         timeCurrentIdx = self.timeCombo.currentIndex()
          try:
             hit = self.occListModel.listData[sHcurrentIdx].searchHit 
          except Exception, e:
             pass
          else:
             tocName = '%s_%s' % (provider, hit.name)
-            if self.tmpDir is not None:
-               try:
-                  if self.serviceType == "snapshot":
-                     tmpDir = os.path.join(self.tmpDir,"%s.shp" % (tocName))
-                     self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpDir,overwrite=True)
-                  elif self.serviceType == "live":
-                     tmpDir = os.path.join(self.tmpDir,"%s.csv" % (tocName))
-                     idb.getSpecimens(hit.name, tmpDir)
-               except Exception, e:
-                  pass
-               else:
-                  try:
-                     self.addToCanvas(tmpDir, tocName)
-                  except Exception, e:
-                     message = "couldn't add shp file to canvas "+str(e)
-                     QMessageBox.warning(self,"status: ", message)
-                  #else:
-                  #   try:
-                  #      # this doesn't work, have no idea why, works from console
-                  #      self.iface.zoomFull()
-                  #   except Exception, e:
-                  #      print "EXCEPTION IN ZOOM ",str(e)                     
+         if tocName is not None and self.tmpDir is not None:
+            try:
+               if self.serviceType == "snapshot":
+                  tmpFname = os.path.join(self.tmpDir,"%s.shp" % (tocName))
+                  self.client.sdm.getShapefileFromOccurrencesHint(hit,tmpFname,
+                                                                  overwrite=True)
+               elif self.serviceType == "live":
+                  print 'live'
+                  tmpFname = os.path.join(self.tmpDir,"%s.csv" % (tocName))
+                  print 'live', tocName
+                  idb.getSpecimens(hit.name, tmpFname)
+            except Exception, e:
+               pass
             else:
-               message = "No tmp directory set in Environment variable, try setting TMPDIR"
-               QMessageBox.warning(self,"status: ",message)  
+               try:
+                  print tmpFname, tocName
+                  self.addToCanvas(tmpFname, tocName)
+               except Exception, e:
+                  message = "couldn't add shp file to canvas "+str(e)
+                  QMessageBox.warning(self,"status: ", message)
+               #else:
+               #   try:
+               #      # this doesn't work, have no idea why, works from console
+               #      self.iface.zoomFull()
+               #   except Exception, e:
+               #      print "EXCEPTION IN ZOOM ",str(e)                     
+         else:
+            message = "No tmp directory set in Environment variable, try setting TMPDIR"
+            QMessageBox.warning(self,"status: ",message)  
                
 # ........................................
-
+   def addOccsetsToCanvas(self, occTimeSlices):
+      for tocName, (tmpFname, dateRange) in occTimeSlices.iteritems():
+#         QMessageBox.warning(self, "status: ",'Entry: ' + tocName + ', ' + tmpFname)
+         if os.path.exists(tmpFname):
+            fileName, fileExtension = os.path.splitext(tmpFname)
+            vectortype = "ogr"
+            if fileExtension == ".csv":
+               csvPath = "file:///{0}?delimiter=,&xField={1}&yField={2}&crs=epsg:4326".format(
+                          tmpFname, DWCNames.DECIMAL_LATITUDE[short],
+                          DWCNames.DECIMAL_LONGITUDE[short])
+               shpFname = fileName + '.shp'
+               vectorLayer = QgsVectorLayer(csvPath, tocName, "delimitedtext")
+               if not vectorLayer.isValid():
+                  QMessageBox.warning(self,"status: ", "%s not valid" % (tocName))
+               else:
+                  vectorwriter = QgsVectorFileWriter.writeAsVectorFormat(vectorLayer,
+                                             shpFname,"utf-8",None,"ESRI Shapefile")
+                  vectorLayer = QgsVectorLayer(shpFname, tocName, vectortype)
+                  if not vectorLayer.isValid():
+                     QMessageBox.warning(self, "status: ", "%s not valid" % (tocName))           
+                  else:
+                     QgsMapLayerRegistry.instance().addMapLayer(vectorLayer)
+         
+# ........................................
    def addToCanvas(self, vectorpath, shapename):
       fileName, fileExtension = os.path.splitext(vectorpath)
       vectortype = "ogr"
       if fileExtension == ".csv":
          csvVectorpath = "file:///" + vectorpath
-         csvVectorpath += "?delimiter=,&xField=lon&yField=lat&crs=epsg:4326"
+         csvVectorpath += "?delimiter=,&xField={0}&yField={1}&crs=epsg:4326".format(
+            DWCNames.DECIMAL_LATITUDE[short],DWCNames.DECIMAL_LONGITUDE[short])
          vectorpath = vectorpath.replace('.csv', '.shp')
          vectorLayer = QgsVectorLayer(csvVectorpath,shapename,"delimitedtext")
          warningname = shapename    

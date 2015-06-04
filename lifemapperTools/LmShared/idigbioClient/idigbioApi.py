@@ -5,8 +5,10 @@ import re
 import urllib
 import urllib2
 import time
+from types import ListType, TupleType
 
-from constants import (ShortDWCNames, IDIGBIO_LIVE_NAME, IDIGBIO_OCCURRENCE_URL,
+from constants import (ShortDWCNames, DWCNames, long, short, IDIGBIO_LIVE_NAME, 
+      IDIGBIO_OCCURRENCE_URL,
       IDIGBIO_SEARCH_URL_PREFIX, IDIGBIO_TOP_URL_PREFIX, IDIGBIO_SEARCH_LIMIT,
       BINOMIAL_REGEX, INVALIDSP_REGEX, IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD,
       IDIGBIO_DATA_KEY, IDIGBIO_IDX_KEY, IDIGBIO_OCCID_KEY, IDIGBIO_ATTR_KEY,
@@ -20,7 +22,6 @@ def _wgetLoadJson(url):
    # Try to get data at least n times (in case the server is loaded and returning 504 - timeout)
    tries = 5
    data = []
-   print url
    for i in range(0, tries):
       try:
          data = urllib2.urlopen(urllib.quote(url, safe="%/:=&?~#+!$,;'@()*[]"))
@@ -93,6 +94,8 @@ def getSpeciesHint(prefix, maxReturned=None):
 
 # ...............................................
 def _getOptionalField(item, keys):
+   if not (isinstance(keys, ListType) or isinstance(keys, TupleType)): 
+      keys = keys.split('.')
    val = item
    for k in keys:
       try:
@@ -117,48 +120,73 @@ def _getOptionalListField(item, listKey, fldKey):
    return vals
 
 # ...............................................
-def getSpecimens(prefix, filename):
+def getSpecimens(prefix, filename, timeSlice=None):
    """
    @summary: Queries for all specimens with a species prefix.
    @param prefix: The genus species string to match.
    @param maxReturned: (optional) The maximum number of results to return
    """
-   query =('?fields=["{0}","{1}","{2}.{3}","{4}","{5}"]&rq={{"{0}":{{"type":"prefix","value":"{6}"}}').format(
-      IDIGBIO_SCINAME_KEY, IDIGBIO_PT_KEY, IDIGBIO_DATA_KEY, IDIGBIO_OCCID_KEY, 
-      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, prefix)
-
-   query += ',"geopoint":{"type":"exists"}}&no_attribution'
-   print query
+   qryElts = []
+   fldqry = 'fields=["{0}","{1}","{2}","{3}","{4}","{5}","{6}"]'.format(
+      IDIGBIO_SCINAME_KEY, IDIGBIO_PT_KEY, DWCNames.OCCURRENCE_ID[long], 
+      IDIGBIO_INSTNAME_KEY, IDIGBIO_COLLNAME_KEY, DWCNames.RECORDED_BY[long], 
+      DWCNames.YEAR[long])
+   qryElts.append('"{0}":{{"type":"prefix","value":"{1}"}}'.format(
+                                                   IDIGBIO_SCINAME_KEY, prefix))
+   qryElts.append('"geopoint":{"type":"exists"}')
+   if timeSlice is not None and len(timeSlice) == 2:
+      qryElts.append('"datecollected": {{"type": "range","gte": "{0}", "lt": "{1}"}}'.format(
+                                       timeSlice[0], timeSlice[1]))
+   qrystr = ','.join(qryElts)
+   query = '?{0}&rq={{{1}}}&no_attribution'.format(fldqry, qrystr)
    
-   js = _wgetLoadJson(IDIGBIO_SEARCH_URL_PREFIX + query + "&limit=1&offset=0")
-   numPoints = int(js["itemCount"])
-   fs = open(filename,'wb')
-   fsw = csv.writer(fs, dialect='excel')
-   fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, IDIGBIO_OCCID_KEY, 
-                 IDIGBIO_SCINAME_KEY, IDIGBIO_LAT_KEY,IDIGBIO_LON_KEY,
-                 IDIGBIO_ATTR_KEY])
-   limit = "&limit=" + str(IDIGBIO_SEARCH_LIMIT)
-   j = 0
-   for i in range(0, numPoints, IDIGBIO_SEARCH_LIMIT):
-      js = _wgetLoadJson(IDIGBIO_SEARCH_URL_PREFIX + query + limit + "&offset=" + str(i))
-      for item in js["items"]:
-         uuid = item[IDIGBIO_ID_FIELD]
-         occid = _getOptionalField(item, [IDIGBIO_DATA_KEY, IDIGBIO_OCCID_KEY])
-         attributionLst = _getOptionalListField(item, IDIGBIO_ATTR_KEY, 'name')
-         attribution = ','.join(attributionLst)
-         fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
-                       item[IDIGBIO_IDX_KEY][IDIGBIO_SCINAME_KEY], 
-                       item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LAT_KEY], 
-                       item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LON_KEY],
-                       attribution])
-         j += 1
-   fs.close()
+   offset = 0
+   queryUrl = "{0}{1}&limit={2}&offset=0".format(IDIGBIO_SEARCH_URL_PREFIX,
+                                                 query, IDIGBIO_SEARCH_LIMIT)
+   totalRetrieved = 0
+   js = _wgetLoadJson(queryUrl)
+   itemCount = int(js["itemCount"])
+   if itemCount > 0:
+      fs = open(filename,'wb')
+      fsw = csv.writer(fs, dialect='excel')
+      fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, 
+                    DWCNames.OCCURRENCE_ID[short], 
+                    DWCNames.SCIENTIFIC_NAME[short], 
+                    DWCNames.DECIMAL_LATITUDE[short],
+                    DWCNames.DECIMAL_LONGITUDE[short], 
+                    DWCNames.RECORDED_BY[short],
+                    DWCNames.YEAR[short] ])
+      for offset in range(0, itemCount, IDIGBIO_SEARCH_LIMIT):
+         print queryUrl
+         for item in js["items"]:
+            uuid = item[IDIGBIO_ID_FIELD]
+            occid = _getOptionalField(item, DWCNames.OCCURRENCE_ID[long])
+            recby = _getOptionalField(item, DWCNames.RECORDED_BY[long])
+            yr = _getOptionalField(item, DWCNames.YEAR[long])
+            fsw.writerow([uuid, IDIGBIO_OCCURRENCE_URL + uuid, occid, 
+                          item[IDIGBIO_IDX_KEY][IDIGBIO_SCINAME_KEY], 
+                          item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LAT_KEY], 
+                          item[IDIGBIO_IDX_KEY][IDIGBIO_PT_KEY][IDIGBIO_LON_KEY],
+                          recby, yr])
+            totalRetrieved += 1
+         if offset < itemCount:
+            queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
+                                               query, IDIGBIO_SEARCH_LIMIT, offset)
+            js = _wgetLoadJson(queryUrl)
+      print 'Wrote {0} items to {1}'.format(totalRetrieved, filename)
+      fs.close()
     
 # ...............................................
 if __name__ == '__main__':
    output = getSpeciesHint('acacia', IDIGBIO_SEARCH_LIMIT)
    print output
    
-   output = getSpecimens('aroapyrgus clenchi', '/tmp/acacia_caven.txt')
-   print output
+   getSpecimens('acacia_caven', '/tmp/acacia_caven.txt')
+   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt')
+   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
+                         timeSlice=(1900, 1970))
+   getSpecimens('aroapyrgus clenchi', '/tmp/aroapyrgus_clenchi.txt', 
+                         timeSlice=(1970,2015))
+   
+
    

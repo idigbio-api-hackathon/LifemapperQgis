@@ -27,6 +27,21 @@ class ShortDWCNames:
    YEAR = 'year'
    RECORDED_BY = 'rec_by'
 
+(long, short) = (0, 1)
+class DWCNames:
+   OCCURRENCE_ID = ('data.dwc:occurrenceID', 'occurid')
+   INSTITUTION_CODE = ('data.dwc:institutionCode','inst_code')
+   COLLECTION_CODE = ('data.dwc:collectionCode', 'coll_code')
+   CATALOG_NUMBER = ('data.dwc:catalogNumber', 'catnum')
+   BASIS_OF_RECORD = ('data.dwc:basisOfRecord', 'basisofrec')
+   DECIMAL_LATITUDE = ('data.dwc:decimalLatitude', 'dec_lat')
+   DECIMAL_LONGITUDE = ('data.dwc:decimalLongitude', 'dec_long')
+   SCIENTIFIC_NAME = ('data.dwc:scientificName', 'sciname')
+   DAY = ('data.dwc:day', 'day')
+   MONTH = ('data.dwc:month', 'month')
+   YEAR = ('data.dwc:year', 'year')
+   RECORDED_BY = ('data.dwc:recordedBy', 'rec_by')
+
 IDIGBIO_ID_FIELD = 'uuid'
 IDIGBIO_LINK_FIELD = 'idigbiourl'
 
