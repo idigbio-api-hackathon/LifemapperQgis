@@ -213,56 +213,11 @@ def getSpecimens(prefix, filename, timeSlice=None):
       fs = open(filename,'wb')
       fsw = csv.writer(fs, dialect='excel')
       success = _writeColumns(fsw)
-#      fsw.writerow([IDIGBIO_ID_FIELD, IDIGBIO_LINK_FIELD, 
-#                    DWCNames.OCCURRENCE_ID[short], 
-#                    DWCNames.SCIENTIFIC_NAME[short], 
-#                    DWCNames.CATALOG_NUMBER[short], 
-#                    DWCNames.INSTITUTION_CODE[short], 
-#                    DWCNames.COLLECTION_CODE[short],
-#                    DWCNames.DECIMAL_LATITUDE[short],
-#                    DWCNames.DECIMAL_LONGITUDE[short], 
-#                    DWCNames.RECORDED_BY[short],
-#                    DWCNames.DAY[short],
-#                    DWCNames.MONTH[short],
-#                    DWCNames.YEAR[short] ])
       for offset in range(debugOffset, itemCount, IDIGBIO_SEARCH_LIMIT):
          for item in js["items"]:
             success = _writeRecord(fsw, item)
             if success:
                totalRetrieved += 1
-#            uuid = item[IDIGBIO_ID_FIELD]
-#            idigurl = IDIGBIO_OCCURRENCE_URL + uuid
-#            occid = _getFieldVal(item, DWCNames.OCCURRENCE_ID[long])
-#            sciname = _getFieldVal(item, 
-#                                   [IDIGBIO_IDX_KEY, IDIGBIO_SCINAME_KEY])
-#            catnum = _getFieldVal(item, DWCNames.CATALOG_NUMBER[long])
-#            instcode = _getFieldVal(item, DWCNames.INSTITUTION_CODE[long])
-#            collcode = _getFieldVal(item, DWCNames.COLLECTION_CODE[long])
-#            lat = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
-#                                           IDIGBIO_LAT_KEY])
-#            lon = _getFieldVal(item, [IDIGBIO_IDX_KEY, IDIGBIO_PT_KEY, 
-#                                           IDIGBIO_LON_KEY])
-#            recby = _getFieldVal(item, DWCNames.RECORDED_BY[long])
-#            day = _getFieldVal(item, DWCNames.DAY[long])
-#            month = _getFieldVal(item, DWCNames.MONTH[long])
-#            year = _getFieldVal(item, DWCNames.YEAR[long])
-#            vals = []
-#            for v in [uuid, idigurl, occid, sciname, catnum, instcode, collcode, 
-#                      lat, lon, recby, day, month, year]:
-#               try:
-#                  if isinstance(v, StringType) or isinstance(v, UnicodeType):
-#                     vals.append(v.encode('utf-8'))
-#                  else:
-#                     vals.append(v)
-#               except Exception, e:
-#                  print('Exception in encoding!! {0} {1}'.format(type(e), str(e)))
-#                  vals.append('Encoding error')
-#            try:
-#               fsw.writerow(vals)
-#            except Exception, e:
-#               print('Exception on writing!! {0} {1} {2}'.format(type(e), str(item), str(e)))
-#            else:
-#               totalRetrieved += 1
          if offset < itemCount:
             queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
                                                query, IDIGBIO_SEARCH_LIMIT, offset)
