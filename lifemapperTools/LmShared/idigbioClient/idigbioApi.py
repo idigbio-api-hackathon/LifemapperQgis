@@ -212,15 +212,16 @@ def getSpecimens(prefix, filename, timeSlice=None):
       fs = open(filename,'wb')
       fsw = csv.writer(fs, dialect='excel')
       success = _writeColumns(fsw)
-      for offset in range(len(js["items"]), itemCount, IDIGBIO_SEARCH_LIMIT):
+      for i in range(0, itemCount, IDIGBIO_SEARCH_LIMIT):
          for item in js["items"]:
             success = _writeRecord(fsw, item)
             if success:
                totalRetrieved += 1
-         if offset < itemCount:
+         if totalRetrieved < itemCount:
             queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
-                                               query, IDIGBIO_SEARCH_LIMIT, offset)
+                                               query, IDIGBIO_SEARCH_LIMIT, totalRetrieved)
             js = _wgetLoadJson(queryUrl)
+         print 'Got {0} items this round, wrote {1} items total'.format(len(js['items']), totalRetrieved)
       print 'Wrote {0} items to {1}'.format(totalRetrieved, filename)
       fs.close()
     
