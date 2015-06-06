@@ -103,7 +103,7 @@ class Ui_Dock(object):
       self.timeCombo = QComboBox()
       self.timeCombo.setEditable(False)
       self.timeCombo.setAutoCompletion(False)
-      self.timeModel = BrowseModel(['All', '1', '5', '10', '50', '100'], parent = self)
+      self.timeModel = BrowseModel(['All', '1', '5', '10', '20', '50', '100'], parent = self)
       self.timeCombo.setModel(self.timeModel)
       self.timeCombo.setEnabled(False)
 
