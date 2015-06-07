@@ -59,7 +59,7 @@ def getSpeciesHint(prefix, maxReturned=None):
    if maxReturned:
       query += "&count=" + str(maxReturned)
    if len(prefix) > 0:
-      query += '&rq={"' + IDIGBIO_SCINAME_KEY + '":{"type":"prefix","value":"' + prefix + '"},"geopoint":{"type":"exists"}}'
+      query += '&rq={"' + IDIGBIO_SCINAME_KEY + '":{"type":"prefix","value":"' + prefix + '"},"geopoint":{"type":"exists"},"datecollected":{"type":"exists"}}'
    else:
       query += '&rq={"geopoint":{"type":"exists"}}'
 

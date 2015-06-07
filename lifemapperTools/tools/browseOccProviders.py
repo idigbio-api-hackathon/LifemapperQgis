@@ -289,11 +289,15 @@ class BrowseOccProviderDock(QDockWidget, Ui_Dock):
                for empty in zeroKeys:
                   slices.pop(empty)
                print 'Remaining keys = ' + str(slices.keys())
-               try:
-                  self.addOccsetsToCanvas(slices)
-               except Exception, e:
-                  message = "couldn't add shp file to canvas "+str(e)
-                  QMessageBox.warning(self,"status: ", message)                  
+               if len(slices.keys()) == 0: # No year ranges with data found
+                  message = "Couldn't find year ranges with data for chosen species"
+                  QMessageBox.warning(self,"status: ", message)
+               else:
+                  try:
+                     self.addOccsetsToCanvas(slices)
+                  except Exception, e:
+                     message = "couldn't add shp file to canvas "+str(e)
+                     QMessageBox.warning(self,"status: ", message)                  
          else:
             message = "No tmp directory set in Environment variable, try setting TMPDIR"
             QMessageBox.warning(self,"status: ",message)
