@@ -200,7 +200,7 @@ def getSpecimens(prefix, filename, timeSlice=None):
       qryElts.append('"datecollected": {{"type": "range","gte": "{0}", "lt": "{1}"}}'.format(
                                        timeSlice[0], timeSlice[1]))
    qrystr = ','.join(qryElts)
-   query = '?{0}&rq={{{1}}}&no_attribution'.format(fldqry, qrystr)
+   query = '?{0}&rq={{{1}}}&no_attribution=1'.format(fldqry, qrystr)
    
    debugOffset = 0
    queryUrl = "{0}{1}&limit={2}&offset={3}".format(IDIGBIO_SEARCH_URL_PREFIX,
